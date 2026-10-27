@@ -1,11 +1,12 @@
-import { Bell, Search, Moon, Sun, ChevronDown } from 'lucide-react'
+import { Bell, Search, Moon, Sun, ChevronDown, Menu } from 'lucide-react'
 
 import { useProfileName, initials } from '../utils/storage'
 
-export default function TopBar({ title, theme, toggleTheme }) {
+export default function TopBar({ title, theme, toggleTheme, onMenu }) {
   const [profileName, editName] = useProfileName()
   return (
     <header className="topbar">
+      <button className="icon-btn menu-btn" title="Menu" aria-label="Open menu" onClick={onMenu}><Menu size={19} /></button>
       <div className="topbar-title">{title}</div>
 
       <div className="topbar-search">

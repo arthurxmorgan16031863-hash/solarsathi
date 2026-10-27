@@ -22,6 +22,8 @@ const PAGE_TITLES = {
 
 export default function App() {
   const [activePage, setActivePage] = useState('overview')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const goTo = id => { setActivePage(id); setMenuOpen(false) }
   const [theme, setTheme] = useState(() => (readJSON('ss_theme', 'light') === 'dark' ? 'dark' : 'light'))
 
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
@@ -46,9 +48,10 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      <Sidebar activePage={activePage} setActivePage={goTo} open={menuOpen} />
+      {menuOpen && <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />}
       <div className="main-area">
-        <TopBar title={PAGE_TITLES[activePage]} theme={theme} toggleTheme={toggleTheme} />
+        <TopBar title={PAGE_TITLES[activePage]} theme={theme} toggleTheme={toggleTheme} onMenu={() => setMenuOpen(o => !o)} />
         <div className="page-content fade-in" key={activePage}>
           <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>{renderPage()}</Suspense>
         </div>

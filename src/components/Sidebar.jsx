@@ -14,11 +14,11 @@ const NAV_ITEMS = [
   { id: 'admin',       label: 'Admin Analytics',      icon: BarChart3 },
 ]
 
-export default function Sidebar({ activePage, setActivePage }) {
+export default function Sidebar({ activePage, setActivePage, open }) {
   const [profileName, editName] = useProfileName()
   const openCount = SEED_OPEN + useComplaints().filter(c => c.status === 'Open').length
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">
           <Sun size={20} color="white" />

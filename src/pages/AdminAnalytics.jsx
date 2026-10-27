@@ -42,7 +42,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div className="metric-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {METRICS.map((m, i) => (
           <div key={i} className="admin-metric">
             <div className="admin-metric-icon" style={{ background: m.bg }}>{m.icon}</div>
