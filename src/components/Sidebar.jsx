@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Calculator, Lightbulb, BookOpen,
   MessageSquare, BarChart3, Users, Sun, Settings, LogOut
 } from 'lucide-react'
-import { useComplaints, SEED_OPEN } from '../utils/storage'
+import { useComplaints, SEED_OPEN, useProfileName, initials } from '../utils/storage'
 
 const NAV_ITEMS = [
   { id: 'overview',    label: 'Overview',             icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ activePage, setActivePage }) {
+  const [profileName, editName] = useProfileName()
   const openCount = SEED_OPEN + useComplaints().filter(c => c.status === 'Open').length
   return (
     <aside className="sidebar">
@@ -23,7 +24,7 @@ export default function Sidebar({ activePage, setActivePage }) {
           <Sun size={20} color="white" />
         </div>
         <div className="sidebar-logo-text">
-          <span className="sidebar-logo-name">SolarSathi</span>
+          <span className="sidebar-logo-name">Solar Sathi</span>
           <span className="sidebar-logo-tagline">Smart Energy Dashboard</span>
         </div>
       </div>
@@ -40,11 +41,11 @@ export default function Sidebar({ activePage, setActivePage }) {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-user-avatar">AP</div>
+        <div className="sidebar-user" onClick={editName} role="button" title="Click to set your name" style={{ cursor: 'pointer' }}>
+          <div className="sidebar-user-avatar">{profileName ? initials(profileName) : '?'}</div>
           <div className="sidebar-user-info">
-            <span className="sidebar-user-name">Arjun Patel</span>
-            <span className="sidebar-user-role">Demo User</span>
+            <span className="sidebar-user-name">{profileName || 'Add your name'}</span>
+            <span className="sidebar-user-role">{profileName ? 'Saved in this browser' : 'Click to set'}</span>
           </div>
         </div>
       </div>

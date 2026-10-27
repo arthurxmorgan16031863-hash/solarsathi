@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { writeJSON } from '../utils/storage'
+import { PERFORMANCE_RATIO, GRID_CO2_KG_PER_KWH, SQFT_PER_KW, DEGRADATION, LIFETIME_YEARS, cumulativeSavings } from '../utils/solar'
 import { Calculator, Sun, Zap, TrendingUp, Leaf, DollarSign, Clock, Info, Printer, Landmark } from 'lucide-react'
 
 const DEFAULT_INPUTS = {
@@ -46,10 +48,10 @@ export default function SolarCalculator() {
 
     // System capacity based on energy demand
     // Assume 30-day month, 0.80 efficiency
-    const capacityByDemand = consumption / (sunHours * 30 * 0.80)
+    const capacityByDemand = consumption / (sunHours * 30 * PERFORMANCE_RATIO)
 
     // Capacity limited by roof area (100 sq ft per kW)
-    const capacityByRoof = roofArea / 100
+    const capacityByRoof = roofArea / SQFT_PER_KW
 
     // Take smaller of demand & roof, then cap by budget
     const uncappedCapacity = Math.min(capacityByDemand, capacityByRoof)
@@ -63,7 +65,7 @@ export default function SolarCalculator() {
     }
 
     // Monthly generation
-    const monthlyGeneration = Math.round(roundedKW * sunHours * 30 * 0.80)
+    const monthlyGeneration = Math.round(roundedKW * sunHours * 30 * PERFORMANCE_RATIO)
 
     // Monthly bill before solar
     const currentMonthlyBill = consumption * tariff
@@ -77,14 +79,19 @@ export default function SolarCalculator() {
     const payback = annualSavings > 0 ? (totalInstallCost / annualSavings).toFixed(1) : 'N/A'
 
     // CO₂: 0.82 kg CO₂ per kWh (India grid emission factor approx)
-    const annualCO2 = Math.round((monthlyGeneration * 12 * 0.82) / 1000 * 10) / 10
+    const annualCO2 = Math.round((monthlyGeneration * 12 * GRID_CO2_KG_PER_KWH) / 1000 * 10) / 10
+
+    const limits = { 'your electricity usage': capacityByDemand, 'your roof area': capacityByRoof, 'your budget': maxCapacityByBudget }
+    const limitedBy = Object.entries(limits).sort((a, b) => a[1] - b[1])[0][0]
+    const lifetimeSavings = Math.round(cumulativeSavings(annualSavings, LIFETIME_YEARS))
 
     const subsidy = suryaGharSubsidy(roundedKW, specialState)
     const netCost = Math.max(totalInstallCost - subsidy, 0)
     const paybackNet = annualSavings > 0 ? (netCost / annualSavings).toFixed(1) : 'N/A'
 
+    writeJSON('ss_last_calc', { kw: roundedKW, monthly: Math.round(monthlySavings), annual: Math.round(annualSavings), cost: totalInstallCost, netCost, co2: annualCO2, at: Date.now() })
     setResult({
-      subsidy, netCost, paybackNet,
+      limitedBy, lifetimeSavings, subsidy, netCost, paybackNet,
       systemCapacity: roundedKW,
       monthlyGeneration,
       installCost: totalInstallCost,
@@ -215,11 +222,29 @@ export default function SolarCalculator() {
                 <div style={{ fontSize: '13px', lineHeight: 1.9 }}>
                   Central subsidy: <strong>₹{result.subsidy.toLocaleString('en-IN')}</strong><br />
                   Cost after subsidy: <strong>₹{result.netCost.toLocaleString('en-IN')}</strong> (was ₹{result.installCost.toLocaleString('en-IN')})<br />
-                  Payback after subsidy: <strong>{result.paybackNet} yrs</strong> (was {result.payback} yrs)
+                  Payback after subsidy: <strong>{result.paybackNet} yrs</strong> (was {result.payback} yrs)<br />
+                  {LIFETIME_YEARS}-year net gain: <strong style={{ color: result.lifetimeSavings - result.netCost >= 0 ? '#15803d' : '#b91c1c' }}>₹{Math.round(result.lifetimeSavings - result.netCost).toLocaleString('en-IN')}</strong> (savings ₹{result.lifetimeSavings.toLocaleString('en-IN')} minus cost after subsidy)
                 </div>
                 <div className="form-hint" style={{ marginTop: '8px' }}>
                   ₹30,000/kW for the first 2 kW + ₹18,000 for the 3rd kW, max ₹78,000 (₹33,000 / ₹19,800 in special-category states). Capped at 3 kW. Fractional kW is prorated. State top-ups are not included. Confirm on pmsuryaghar.gov.in.
                 </div>
+              </div>
+
+              <div className="alert alert-info" style={{ marginTop: '16px' }}>
+                System size is limited by <strong>{result.limitedBy}</strong>.
+              </div>
+
+              <div className="card" style={{ marginTop: '16px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Assumptions &amp; limits</div>
+                <ul style={{ fontSize: '12.5px', lineHeight: 1.8, paddingLeft: '18px', color: 'var(--text-secondary)' }}>
+                  <li>Output = capacity × sunlight hours × 30 days × {Math.round(PERFORMANCE_RATIO * 100)}% real-world efficiency.</li>
+                  <li>Roof needs about {SQFT_PER_KW} sq ft per kW (shadow-free).</li>
+                  <li>Panels lose about {DEGRADATION * 100}% output per year; the tariff is kept flat (no yearly rise).</li>
+                  <li>Savings use one flat tariff and are capped at your current bill. Real bills use slabs and net-metering rules that vary by state.</li>
+                  <li>CO₂ uses about {GRID_CO2_KG_PER_KWH} kg per kWh, an approximate grid average. Check the latest CEA figure for exact reporting.</li>
+                  <li>Not included: GST, financing interest, maintenance, inverter replacement (~year 10–12), state subsidies.</li>
+                  <li>PM Surya Ghar applies to residential rooftop systems installed by a registered vendor and claimed on the national portal.</li>
+                </ul>
               </div>
 
               <button className="btn btn-secondary no-print" style={{ marginTop: '16px' }} onClick={() => window.print()}>

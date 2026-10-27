@@ -36,7 +36,7 @@ const CARDS = [
     icon: <Star size={22} color="#f59e0b" />,
     bg: 'var(--c-fff7ed)',
     title: 'Government Schemes',
-    content: 'PM Surya Ghar Muft Bijli Yojana: Subsidy for rooftop solar for residential consumers. ₹78,000 for 3 kW, ₹30,000/kW beyond 3 kW (up to 10 kW). Many states offer additional incentives. MNRE and state DISCOM portals provide application guidance. Check pmsuryaghar.gov.in for current details.',
+    content: 'PM Surya Ghar Muft Bijli Yojana: Subsidy for rooftop solar for residential consumers. ₹30,000/kW for the first 2 kW plus ₹18,000 for the 3rd kW, capped at ₹78,000 (no extra subsidy beyond 3 kW). Many states offer additional incentives. MNRE and state DISCOM portals provide application guidance. Check pmsuryaghar.gov.in for current details.',
   },
 ]
 
@@ -44,7 +44,7 @@ const FAQS = [
   { q: 'How long does solar panel installation take?', a: 'Typically 1–3 days for a residential system (3–10 kW), excluding permit approvals which can take 2–4 weeks.' },
   { q: 'Can I run AC units on solar?', a: 'Yes. A 1.5 TR AC consumes ~1.5 kW. A 5 kW solar system can comfortably run 2 ACs during the day along with other loads.' },
   { q: 'What happens during a power cut?', a: 'A grid-tied system (no battery) shuts down for safety during grid failures. Add battery storage for backup power during outages.' },
-  { q: 'How much subsidy can I get?', a: 'Under PM Surya Ghar Muft Bijli Yojana, you can get ₹78,000 for up to 3 kW and ₹30,000/kW for 3–10 kW. Additional state subsidies may apply.' },
+  { q: 'How much subsidy can I get?', a: 'Under PM Surya Ghar Muft Bijli Yojana, the central subsidy is ₹30,000/kW for the first 2 kW and ₹18,000 for the 3rd kW, capped at ₹78,000 for 3 kW or more. Additional state subsidies may apply.' },
   { q: 'Do solar panels work in monsoon or winters?', a: 'Yes, but at reduced efficiency (typically 50–70% of peak capacity). Panels work on diffuse light too, not just direct sunlight.' },
 ]
 

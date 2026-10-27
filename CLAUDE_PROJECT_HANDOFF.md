@@ -1,11 +1,11 @@
-# SolarSathi — Claude Project Handoff & Context Document
+# Solar Sathi — Claude Project Handoff & Context Document
 
 > **Use this file as context when working with Claude.** You can upload this markdown file directly into Claude, attach it to a Claude Project, or copy-paste the starter prompt at the bottom into any chat.
 
 ---
 
 ## 📌 Project Overview
-- **Project Name:** SolarSathi (Smart Renewable Energy Community Support & Solar Decision Dashboard)
+- **Project Name:** Solar Sathi (Smart Renewable Energy Community Support & Solar Decision Dashboard)
 - **Nature of App:** Client-side Single Page Application (SPA) designed as an interactive prototype for renewable energy awareness, financial calculations, rooftop assessment, and community support.
 - **Target Audience:** Residential homeowners, community energy coordinators, and student project evaluators.
 - **Hosting / Environment:** Vite local development server on Windows (can be deployed to Vercel/Netlify/GitHub Pages).
@@ -108,7 +108,7 @@ npm run build
 ## 💬 Ready-to-Use Prompt to Copy-Paste into Claude
 
 ```markdown
-Hi Claude! I am working on "SolarSathi", a React 19 + Vite web prototype for a smart community solar dashboard and decision support system.
+Hi Claude! I am working on "Solar Sathi", a React 19 + Vite web prototype for a smart community solar dashboard and decision support system.
 
 The project is currently working and builds with zero errors. It features 7 core pages:
 1. Overview (KPIs, generation charts)

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { MessageSquare, Upload, CheckCircle, Clock, AlertTriangle, X, Eye, EyeOff } from 'lucide-react'
-import { getComplaints, writeJSON } from '../utils/storage'
+import { getComplaints, writeJSON, getProfileName } from '../utils/storage'
 
 const CATEGORIES = [
   'Panel Fault',
@@ -39,7 +39,7 @@ function saveComplaints(list) {
 const EMPTY_FORM = { name: '', category: CATEGORIES[0], location: '', description: '', photo: null, photoName: '' }
 
 export default function ComplaintsSupport() {
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, name: getProfileName() }))
   const [submitted, setSubmitted] = useState(false)
   const [lastId, setLastId] = useState('')
   const [complaints, setComplaints] = useState(loadComplaints)
@@ -109,7 +109,7 @@ export default function ComplaintsSupport() {
 
     // Revoke the blob URL to free memory
     if (form.photo) URL.revokeObjectURL(form.photo)
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, name: getProfileName() })
     // Reset file input
     if (fileRef.current) fileRef.current.value = ''
   }

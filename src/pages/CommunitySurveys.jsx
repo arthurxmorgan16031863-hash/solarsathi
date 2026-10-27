@@ -1,4 +1,4 @@
-import { readJSON, writeJSON } from '../utils/storage'
+import { readJSON, writeJSON, getSurveyCount } from '../utils/storage'
 import { useState } from 'react'
 import { Users, CheckCircle, BarChart2, ChevronRight } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -74,6 +74,7 @@ export default function CommunitySurveys() {
       stored[key][answers[q.key]] = (stored[key][answers[q.key]] || 0) + 1
     })
     writeJSON('ss_survey_results', stored)
+    writeJSON('ss_survey_count', getSurveyCount() + 1)
     setResults(stored)
     setSubmitted(true)
   }
@@ -201,9 +202,7 @@ export default function CommunitySurveys() {
         </div>
         <div className="grid-3">
           {[
-            { label: 'Surveys Completed', value: '1,240', icon: '📋', color: 'var(--c-dcfce7)', textColor: 'var(--c-15803d)' },
-            { label: 'Avg. Response Time', value: '2.3 min', icon: '⏱️', color: 'var(--c-dbeafe)', textColor: '#1d4ed8' },
-            { label: 'Participants This Month', value: '184', icon: '👥', color: 'var(--c-ede9fe)', textColor: '#7c3aed' },
+            { label: 'Surveys Completed (this browser)', value: String(getSurveyCount()), icon: '📋', color: 'var(--c-dcfce7)', textColor: 'var(--c-15803d)' },
           ].map((s, i) => (
             <div key={i} style={{ background: s.color, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
               <div style={{ fontSize: '28px', marginBottom: '4px' }}>{s.icon}</div>

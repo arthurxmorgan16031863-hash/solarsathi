@@ -1,4 +1,4 @@
-# Deploying SolarSathi
+# Deploying Solar Sathi
 
 **Vercel:** import the repo (framework: Vite). `vercel.json` is already set. No env vars needed.
 

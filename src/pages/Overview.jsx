@@ -1,5 +1,5 @@
-import { getComplaints, SEED_OPEN } from '../utils/storage'
-import { useState, useEffect } from 'react'
+import { cumulativeSavings } from '../utils/solar'
+import { getComplaints, SEED_OPEN, getLastCalc, getSurveyCount } from '../utils/storage'
 import {
   TrendingUp, Zap, MessageSquare, Users, Sun, ArrowRight,
   Calculator, Lightbulb, BookOpen, PlusCircle, ChevronUp, ChevronDown
@@ -9,34 +9,6 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts'
 
-const MONTHLY_DATA = [
-  { month: 'Jan', generation: 280, savings: 1680 },
-  { month: 'Feb', generation: 320, savings: 1920 },
-  { month: 'Mar', generation: 390, savings: 2340 },
-  { month: 'Apr', generation: 440, savings: 2640 },
-  { month: 'May', generation: 510, savings: 3060 },
-  { month: 'Jun', generation: 480, savings: 2880 },
-  { month: 'Jul', generation: 460, savings: 2760 },
-  { month: 'Aug', generation: 495, savings: 2970 },
-  { month: 'Sep', generation: 420, savings: 2520 },
-  { month: 'Oct', generation: 370, savings: 2220 },
-  { month: 'Nov', generation: 310, savings: 1860 },
-  { month: 'Dec', generation: 260, savings: 1560 },
-]
-
-const ADOPTION_DATA = [
-  { name: 'Residential', value: 58, color: '#1a7a4a' },
-  { name: 'Commercial', value: 28, color: '#22a862' },
-  { name: 'Industrial', value: 14, color: 'var(--c-86efac)' },
-]
-
-const COMPLAINTS_DATA = [
-  { id: 'SS-0041', type: 'Panel Fault', location: 'Pune, MH', date: '24 Oct 2026', status: 'Open' },
-  { id: 'SS-0040', type: 'Inverter Issue', location: 'Mumbai, MH', date: '22 Oct 2026', status: 'In Progress' },
-  { id: 'SS-0039', type: 'Maintenance Req.', location: 'Nashik, MH', date: '19 Oct 2026', status: 'Resolved' },
-  { id: 'SS-0038', type: 'Installation Issue', location: 'Nagpur, MH', date: '17 Oct 2026', status: 'Resolved' },
-]
-
 const STATUS_COLORS = {
   'Open': 'badge-red',
   'In Progress': 'badge-yellow',
@@ -44,22 +16,21 @@ const STATUS_COLORS = {
 }
 
 export default function Overview({ setActivePage }) {
-  const [adoption, setAdoption] = useState(0)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setAdoption(62), 400)
-    return () => clearTimeout(timer)
-  }, [])
-
   // Load complaints from localStorage
   const localComplaints = getComplaints()
-  const allComplaints = [...localComplaints.slice(0, 2).map(c => ({
+  const allComplaints = localComplaints.slice(0, 5).map(c => ({
     id: c.id,
     type: c.category,
     location: c.location,
     date: new Date(c.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
     status: c.status,
-  })), ...COMPLAINTS_DATA].slice(0, 5)
+  }))
+  const lastCalc = getLastCalc()
+  const surveyCount = getSurveyCount()
+  const paybackCost = lastCalc ? (lastCalc.netCost ?? lastCalc.cost ?? 0) : 0
+  const paybackData = lastCalc ? Array.from({ length: 26 }, (_, y) => ({ year: y, 'Cumulative savings': Math.round(cumulativeSavings(lastCalc.annual, y)), 'Cost after subsidy': paybackCost })) : []
+  const STATUS_COLOR = { 'Open': '#ef4444', 'In Progress': '#f59e0b', 'Resolved': '#1a7a4a' }
+  const statusData = Object.keys(STATUS_COLOR).map(k => ({ name: k, value: localComplaints.filter(c => c.status === k).length, color: STATUS_COLOR[k] })).filter(d => d.value > 0)
 
   const openCount = localComplaints.filter(c => c.status === 'Open').length + SEED_OPEN
 
@@ -69,7 +40,7 @@ export default function Overview({ setActivePage }) {
       <div className="welcome-banner">
         <div>
           <h1>Power your future with solar energy ☀️</h1>
-          <p>Welcome back, Arjun! Your community has saved 4.2 tonnes of CO₂ this month. Keep inspiring!</p>
+          <p>Estimate your savings, check your rooftop and report issues. Figures below come from what you enter in this app.</p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
             <button className="btn btn-secondary" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }} onClick={() => setActivePage('calculator')}>
               <Calculator size={15} /> Calculate Savings
@@ -81,16 +52,16 @@ export default function Overview({ setActivePage }) {
         </div>
         <div className="banner-stats">
           <div className="banner-stat">
-            <div className="banner-stat-val">4.2T</div>
-            <div className="banner-stat-label">CO₂ Saved</div>
+            <div className="banner-stat-val">{lastCalc ? `${lastCalc.co2} T` : "—"}</div>
+            <div className="banner-stat-label">CO₂ / yr (your estimate)</div>
           </div>
           <div className="banner-stat">
-            <div className="banner-stat-val">1,240</div>
-            <div className="banner-stat-label">Active Users</div>
+            <div className="banner-stat-val">{localComplaints.length}</div>
+            <div className="banner-stat-label">Complaints Filed</div>
           </div>
           <div className="banner-stat">
-            <div className="banner-stat-val">₹2.8L</div>
-            <div className="banner-stat-label">Community Savings</div>
+            <div className="banner-stat-val">{lastCalc ? `₹${lastCalc.annual.toLocaleString("en-IN")}` : "—"}</div>
+            <div className="banner-stat-label">Annual Savings (estimate)</div>
           </div>
         </div>
       </div>
@@ -99,16 +70,16 @@ export default function Overview({ setActivePage }) {
       <div className="stats-grid">
         <StatCard
           label="Est. Monthly Savings"
-          value="₹2,640"
-          change="+12% vs last month"
+          value={lastCalc ? `₹${lastCalc.monthly.toLocaleString("en-IN")}` : "—"}
+          change={lastCalc ? "From your last calculation" : "Run the Solar Calculator"}
           positive
           icon={<TrendingUp size={20} color="#1a7a4a" />}
           iconBg="var(--c-dcfce7)"
         />
         <StatCard
           label="Recommended Capacity"
-          value="4.4 kW"
-          change="Based on avg usage"
+          value={lastCalc ? `${lastCalc.kw} kW` : "—"}
+          change={lastCalc ? "From your last calculation" : "Run the Solar Calculator"}
           positive
           icon={<Zap size={20} color="#d97706" />}
           iconBg="var(--c-fef3c7)"
@@ -116,15 +87,15 @@ export default function Overview({ setActivePage }) {
         <StatCard
           label="Open Complaints"
           value={openCount}
-          change={openCount > SEED_OPEN ? `${openCount - SEED_OPEN} new this week` : "No change"}
+          change={`${localComplaints.length} filed in total`}
           positive={false}
           icon={<MessageSquare size={20} color="#ef4444" />}
           iconBg="var(--c-fee2e2)"
         />
         <StatCard
-          label="Community Participation"
-          value="1,240"
-          change="+8 new this week"
+          label="Surveys Completed"
+          value={surveyCount}
+          change="In this browser"
           positive
           icon={<Users size={20} color="#3b82f6" />}
           iconBg="var(--c-dbeafe)"
@@ -133,63 +104,50 @@ export default function Overview({ setActivePage }) {
 
       {/* Charts Row */}
       <div className="grid-2" style={{ marginBottom: '20px' }}>
-        {/* Monthly Generation Chart */}
+        {/* Payback chart (from your last calculator run) */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div>
-              <div className="section-title" style={{ marginBottom: '2px' }}>Monthly Solar Generation</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>kWh generated per month (demo data)</div>
-            </div>
-            <span className="tag"><Sun size={12} /> 2026</span>
+          <div style={{ marginBottom: '20px' }}>
+            <div className="section-title" style={{ marginBottom: '2px' }}>Savings vs. Cost</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Cumulative savings over 25 years (with 0.5%/yr panel degradation) from your last calculation</div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MONTHLY_DATA}>
-              <defs>
-                <linearGradient id="genGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1a7a4a" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#1a7a4a" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--c-f1f5f9)" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <Tooltip
-                contentStyle={{ borderRadius: '10px', border: '1px solid var(--c-e2e8f0)', fontSize: '13px' }}
-                formatter={(v) => [`${v} kWh`, 'Generation']}
-              />
-              <Area type="monotone" dataKey="generation" stroke="#1a7a4a" strokeWidth={2.5} fill="url(#genGrad)" dot={{ r: 3, fill: '#1a7a4a' }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {!lastCalc ? (
+            <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+              <div>Run the Solar Calculator to see your payback chart.<br /><button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setActivePage('calculator')}>Open Calculator</button></div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={paybackData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-f1f5f9)" />
+                <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#94a3b8' }} label={{ value: 'Years', position: 'insideBottomRight', offset: -4, fontSize: 11, fill: '#94a3b8' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `₹${Math.round(v / 1000)}k`} />
+                <Tooltip contentStyle={{ borderRadius: '10px', fontSize: '13px' }} formatter={(v, n) => [`₹${Math.round(v).toLocaleString('en-IN')}`, n]} />
+                <Area type="monotone" dataKey="Cumulative savings" stroke="#1a7a4a" strokeWidth={2.5} fill="#1a7a4a" fillOpacity={0.15} />
+                <Area type="monotone" dataKey="Cost after subsidy" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" fill="none" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Adoption Pie + Progress */}
+        {/* Complaints by status (real) */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div>
-              <div className="section-title" style={{ marginBottom: '2px' }}>Solar Adoption by Sector</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Community distribution</div>
-            </div>
+          <div style={{ marginBottom: '20px' }}>
+            <div className="section-title" style={{ marginBottom: '2px' }}>Complaints by Status</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Tickets filed in this browser</div>
           </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie data={ADOPTION_DATA} cx="50%" cy="50%" outerRadius={62} dataKey="value" label={({ name, value }) => `${name} ${value}%`} labelLine={false} fontSize={11}>
-                {ADOPTION_DATA.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => [`${v}%`, 'Share']} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600 }}>Overall Adoption Progress</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--forest-green)' }}>{adoption}%</span>
+          {statusData.length === 0 ? (
+            <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+              <div>No complaints filed yet.<br /><button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setActivePage('complaints')}>File a Complaint</button></div>
             </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${adoption}%` }} />
-            </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '6px' }}>Target: 80% community adoption by Dec 2027</div>
-          </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={statusData} isAnimationActive={false} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name} ${value}`} labelLine={false} fontSize={12}>
+                  {statusData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -225,6 +183,7 @@ export default function Overview({ setActivePage }) {
               </tr>
             </thead>
             <tbody>
+                {allComplaints.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No complaints filed yet.</td></tr>}
               {allComplaints.map((c, i) => (
                 <tr key={i}>
                   <td><code style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '13px' }}>{c.id}</code></td>
