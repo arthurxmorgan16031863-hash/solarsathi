@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { writeJSON } from '../utils/storage'
-import { PERFORMANCE_RATIO, GRID_CO2_KG_PER_KWH, SQFT_PER_KW, DEGRADATION, LIFETIME_YEARS, cumulativeSavings } from '../utils/solar'
+import { suryaGharSubsidy, PERFORMANCE_RATIO, GRID_CO2_KG_PER_KWH, SQFT_PER_KW, DEGRADATION, LIFETIME_YEARS, cumulativeSavings } from '../utils/solar'
 import { Calculator, Sun, Zap, TrendingUp, Leaf, DollarSign, Clock, Info, Printer, Landmark } from 'lucide-react'
 
 const DEFAULT_INPUTS = {
@@ -10,14 +10,6 @@ const DEFAULT_INPUTS = {
   budget: 200000,
   sunHours: 5,
   installCostPerKW: 50000,
-}
-
-/** PM Surya Ghar CFA: ₹30,000/kW (first 2 kW) + ₹18,000 (3rd kW), capped at 3 kW / ₹78,000.
- *  Special-category states/UTs: ₹33,000/kW and ₹19,800. Fractional kW is prorated (indicative). */
-export function suryaGharSubsidy(kw, special = false) {
-  const [first, third] = special ? [33000, 19800] : [30000, 18000]
-  const k = Math.min(Math.max(kw, 0), 3)
-  return Math.round(Math.min(k, 2) * first + Math.max(k - 2, 0) * third)
 }
 
 export default function SolarCalculator() {

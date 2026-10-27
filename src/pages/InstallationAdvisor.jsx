@@ -1,65 +1,43 @@
 import { useState } from 'react'
+import { PERFORMANCE_RATIO, SQFT_PER_KW, ADVISOR_COST_PER_KW, BATTERY_COST_PER_KWH, HYBRID_INVERTER_EXTRA, INVERTER_SIZES_KW, suryaGharSubsidy } from '../utils/solar'
 import { Lightbulb, Sun, Battery, Home, CheckCircle, Info, AlertTriangle } from 'lucide-react'
 
-const LOCATIONS = ['Mumbai, MH', 'Pune, MH', 'Delhi, NCR', 'Bangalore, KA', 'Chennai, TN', 'Hyderabad, TS', 'Jaipur, RJ', 'Ahmedabad, GJ', 'Kolkata, WB', 'Other']
-
-function getRecommendation({ consumption, roofArea, budget, location, backup }) {
-  // Rule-based system
-  const capacityByDemand = consumption / (5 * 30 * 0.80)
-  const capacityByRoof = roofArea / 100
-  const raw = Math.min(capacityByDemand, capacityByRoof)
-  const costPerKW = 55000
-  const maxByBudget = budget / costPerKW
-  const capacity = Math.min(raw, maxByBudget)
-  const roundedKW = Math.round(capacity * 10) / 10
-
-  const inverterSize = roundedKW <= 1 ? 1 : roundedKW <= 3 ? 3 : roundedKW <= 5 ? 5 : 10
-  const panels = Math.ceil(roundedKW / 0.4) // 400W per panel
+function getRecommendation({ consumption, roofArea, budget, backup }) {
   const needsBattery = backup === 'yes'
-  const batteryCapacity = needsBattery ? Math.max(5, Math.round(roundedKW * 2)) : null // ~2 hrs backup
+  const capacityByDemand = consumption / (5 * 30 * PERFORMANCE_RATIO) // 5 sun-hours/day assumed for all cities
+  const capacityByRoof = roofArea / SQFT_PER_KW
 
-  // Mounting type
-  const mounting = roofArea >= 600 ? 'Ground Mount or Flat Roof (Ballasted)' : 'Rooftop Flush Mount'
+  // Cost of a k-kW system, including battery + hybrid inverter when backup is requested
+  const batteryFor = k => (needsBattery ? Math.max(5, Math.round(k * 2)) : 0) // ~2 hours of backup at full output
+  const costFor = k => Math.round(k * ADVISOR_COST_PER_KW) + (needsBattery ? batteryFor(k) * BATTERY_COST_PER_KWH + HYBRID_INVERTER_EXTRA : 0)
 
-  // Location-based note
-  const locationNotes = {
-    'Jaipur, RJ': 'Rajasthan receives excellent solar radiation (~6 hrs/day). A great location for solar.',
-    'Chennai, TN': 'Tamil Nadu has strong solar potential and state subsidies available.',
-    'Mumbai, MH': 'Maharashtra offers PM Surya Ghar scheme subsidies. Urban shading may reduce output.',
-    'Pune, MH': 'Pune is ideal for solar with good irradiance and MSEDCL net metering options.',
-    'Delhi, NCR': 'Delhi offers capital subsidy under PM Surya Ghar Muft Bijli Yojana.',
-    'Bangalore, KA': 'Bangalore has moderate solar potential. BESCOM offers net metering.',
-    'Hyderabad, TS': 'Telangana has good solar resources. TSSPDCL net metering is available.',
-  }
+  // Largest size (0.1 kW steps) that fits demand, roof AND budget
+  let capacity = Math.floor(Math.min(capacityByDemand, capacityByRoof) * 10) / 10
+  while (capacity > 0 && costFor(capacity) > budget) capacity = Math.round((capacity - 0.1) * 10) / 10
+  const limitedBy = capacity >= Math.floor(Math.min(capacityByDemand, capacityByRoof) * 10) / 10
+    ? (capacityByRoof < capacityByDemand ? 'your roof area' : 'your electricity usage') : 'your budget'
+  if (capacity <= 0) return null
 
-  const locNote = locationNotes[location] || 'Check with your state DISCOM for net metering and subsidy policies.'
+  const panels = Math.ceil(capacity / 0.4) // 400 W panels
+  const inverterSize = INVERTER_SIZES_KW.find(sz => sz >= capacity) || Math.ceil(capacity)
+  const batteryCapacity = needsBattery ? batteryFor(capacity) : null
+  const totalCost = costFor(capacity)
+  const batteryCost = batteryCapacity ? batteryCapacity * BATTERY_COST_PER_KWH + HYBRID_INVERTER_EXTRA : 0
+  const systemCost = totalCost - batteryCost
+  const subsidy = suryaGharSubsidy(capacity)
 
-  let explanation = `Based on your monthly consumption of ${consumption} kWh and available roof area of ${roofArea} sq ft, a ${roundedKW} kW rooftop solar system is recommended. `
-  explanation += `This system uses approximately ${panels} solar panels (400W each) and a ${inverterSize} kW string inverter. `
-  if (needsBattery) {
-    explanation += `A ${batteryCapacity} kWh battery bank is included for power backup as requested. `
-  } else {
-    explanation += `No battery backup is included (grid-tied system), which reduces cost and complexity. `
-  }
-  explanation += locNote
+  const mounting = 'Flush mount on a sloped roof, or tilted structure on a flat roof (confirmed after a site visit)'
 
-  const systemCost = Math.round(roundedKW * costPerKW)
-  const batteryCost = batteryCapacity ? batteryCapacity * 10000 : 0
-  const totalCost = systemCost + batteryCost
-  const withinBudget = totalCost <= budget
+  let explanation = `Based on ${consumption} kWh/month and ${roofArea} sq ft of roof, a ${capacity} kW system fits your needs (size is limited by ${limitedBy}). `
+  explanation += `It uses about ${panels} panels (400 W each) and a ${inverterSize} kW inverter. `
+  explanation += needsBattery
+    ? `A ${batteryCapacity} kWh battery (about ₹${BATTERY_COST_PER_KWH.toLocaleString('en-IN')}/kWh, LFP) and a hybrid inverter are included for backup. Batteries add a lot of cost and are not covered by the PM Surya Ghar subsidy. `
+    : 'No battery is included (grid-tied), which keeps cost and complexity down. '
+  explanation += 'Check with your DISCOM for net-metering rules; they differ by state.'
 
   return {
-    capacity: roundedKW,
-    panels,
-    inverterSize,
-    batteryCapacity,
-    mounting,
-    systemCost,
-    batteryCost,
-    totalCost,
-    withinBudget,
-    explanation,
-    locNote,
+    capacity, panels, inverterSize, batteryCapacity, mounting, systemCost, batteryCost, totalCost,
+    subsidy, netCost: Math.max(totalCost - subsidy, 0), budget, withinBudget: totalCost <= budget, explanation, limitedBy,
   }
 }
 
@@ -68,19 +46,29 @@ export default function InstallationAdvisor() {
     consumption: 250,
     roofArea: 400,
     budget: 180000,
-    location: 'Pune, MH',
     backup: 'no',
   })
   const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
 
   const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: field === 'location' || field === 'backup' ? value : parseFloat(value) || 0 }))
+    setForm(prev => ({ ...prev, [field]: value }))
     setResult(null)
+    setError('')
   }
 
   const handleSubmit = () => {
-    if (!form.consumption || !form.roofArea || !form.budget) return
-    setResult(getRecommendation(form))
+    const consumption = Number(form.consumption), roofArea = Number(form.roofArea), budget = Number(form.budget)
+    if ([consumption, roofArea, budget].some(v => !Number.isFinite(v) || v <= 0)) {
+      setError('Please enter consumption, roof area and budget as numbers greater than zero.')
+      return
+    }
+    const rec = getRecommendation({ consumption, roofArea, budget, backup: form.backup })
+    if (!rec) {
+      setError(`Your budget of ₹${budget.toLocaleString('en-IN')} is too low for a system${form.backup === 'yes' ? ' with battery backup' : ''}. Try a higher budget or choose no battery.`)
+      return
+    }
+    setResult(rec)
   }
 
   return (
@@ -119,13 +107,6 @@ export default function InstallationAdvisor() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Location / City</label>
-            <select className="form-select" value={form.location} onChange={e => handleChange('location', e.target.value)}>
-              {LOCATIONS.map(l => <option key={l}>{l}</option>)}
-            </select>
-          </div>
-
-          <div className="form-group">
             <label className="form-label">Do you need battery backup?</label>
             <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
               {['yes', 'no'].map(v => (
@@ -136,6 +117,8 @@ export default function InstallationAdvisor() {
               ))}
             </div>
           </div>
+
+          {error && <div className="alert alert-warning" style={{ marginBottom: '12px' }}><AlertTriangle size={15} style={{ flexShrink: 0 }} /><span style={{ fontSize: '13px' }}>{error}</span></div>}
 
           <button className="btn btn-primary btn-full btn-lg" style={{ marginTop: '8px' }} onClick={handleSubmit}>
             <Lightbulb size={17} /> Get My Recommendation
@@ -193,6 +176,14 @@ export default function InstallationAdvisor() {
                   <div className="spec-label">Est. Total Cost</div>
                   <div className="spec-value">₹{result.totalCost.toLocaleString('en-IN')}</div>
                 </div>
+                <div className="spec-item">
+                  <div className="spec-label">PM Surya Ghar Subsidy</div>
+                  <div className="spec-value">₹{result.subsidy.toLocaleString('en-IN')}</div>
+                </div>
+                <div className="spec-item">
+                  <div className="spec-label">Cost After Subsidy</div>
+                  <div className="spec-value">₹{result.netCost.toLocaleString('en-IN')}</div>
+                </div>
               </div>
 
               <div style={{ background: 'var(--bg-white)', borderRadius: '10px', padding: '16px', marginTop: '16px', border: '1px solid var(--c-d1fae5)' }}>
@@ -203,14 +194,25 @@ export default function InstallationAdvisor() {
               {!result.withinBudget && (
                 <div className="alert alert-warning" style={{ marginTop: '14px' }}>
                   <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '13px' }}>Estimated cost (₹{result.totalCost.toLocaleString('en-IN')}) exceeds your stated budget of ₹{form.budget.toLocaleString('en-IN')}. Consider reducing capacity or battery size.</span>
+                  <span style={{ fontSize: '13px' }}>Estimated cost (₹{result.totalCost.toLocaleString('en-IN')}) exceeds your stated budget of ₹{result.budget.toLocaleString('en-IN')}. Consider reducing capacity or battery size.</span>
                 </div>
               )}
+
+              <div className="card" style={{ marginTop: '14px', padding: '14px' }}>
+                <div style={{ fontWeight: 600, fontSize: '13.5px', marginBottom: '6px' }}>Before you install</div>
+                <ul style={{ fontSize: '12.5px', lineHeight: 1.8, paddingLeft: '18px', color: 'var(--text-secondary)' }}>
+                  <li>Check the roof gets full sun from about 9 am to 3 pm, with no shadows from buildings or trees.</li>
+                  <li>Have the roof's strength and waterproofing checked; panels add roughly 12–15 kg per m².</li>
+                  <li>Use an installer registered with your DISCOM for the PM Surya Ghar subsidy, and apply on the national portal.</li>
+                  <li>Ask for a written quote that lists panel brand, inverter, warranty and net-metering paperwork.</li>
+                  <li>Subsidy is shown for a standard state. Special-category states get a higher amount.</li>
+                </ul>
+              </div>
 
               {result.withinBudget && (
                 <div className="alert alert-success" style={{ marginTop: '14px' }}>
                   <CheckCircle size={15} style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '13px' }}>This system fits within your budget of ₹{form.budget.toLocaleString('en-IN')}! You may have ₹{(form.budget - result.totalCost).toLocaleString('en-IN')} available for contingency or extras.</span>
+                  <span style={{ fontSize: '13px' }}>This system fits within your budget of ₹{result.budget.toLocaleString('en-IN')}! You may have ₹{(result.budget - result.totalCost).toLocaleString('en-IN')} available for contingency or extras.</span>
                 </div>
               )}
             </div>
